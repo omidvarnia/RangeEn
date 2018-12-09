@@ -1,5 +1,5 @@
 # RangeEn
-This package implements the ApEn, SampEn, RangeEn-A and RangeEn-B measures as well as the results of: A. Omidvarnia, M. Mesbah, M. Pedersen, G. Jackson, "Range entropy: a bridge between signal complexity and self-similarity", 2018 (https://arxiv.org/pdf/1809.06500.pdf). The Python scripts for generating the figures 1 to 6 have been copied in the Analyses folder with relevant naming. All results have also been pre-saved into the Analyses/Results sub-folder. The Analyses scripts first check the Results sub-folder to load the existing results. If there is no results there or if the 'force' flag in the Analyses scripts is on, the results will be generated from scratch (and it might take quite a long time for some analyses).
+This package implements the ApEn, SampEn, RangeEn-A and RangeEn-B measures as well as the results of: A. Omidvarnia, M. Mesbah, M. Pedersen, G. Jackson, "Range entropy: A bridge between signal complexity and self-similarity", Entropy, 2018 (https://arxiv.org/pdf/1809.06500.pdf). The Python scripts for generating the figures 1 to 6 have been copied in the Analyses folder with relevant naming. All results have also been pre-saved into the Analyses/Results sub-folder. The Analyses scripts first check the Results sub-folder to load the existing results. If there is no results there or if the 'force' flag in the Analyses scripts is on, the results will be generated from scratch (and it might take quite a long time for some analyses).
 
 All entropy measures (SampEn, ApEn, RangeEn-A and RangeEn-B) have been implemented in 'measures.py'. All simulated models and signals are generated through 'sim_data.py'.
 
@@ -12,6 +12,8 @@ label 'S' associated with dataset 'E': intracraninal ictal EEG of 5 epilepsy sub
 
 Reference: Andrzejak RG, Lehnertz K, Rieke C, Mormann F, David P, Elger CE (2001) Indications of nonlinear deterministic and finite dimensional structures in time series of brain electrical activity: Dependence on recording region and brain state, Phys. Rev. E, 64, 061907.
 
-Implementation of the RangeEn functions as well as SampEn and ApEn in this package is based on the 'sampen' function of 'nolds' library: https://github.com/CSchoel/nolds, https://pypi.org/project/nolds/.
+Implementation of the RangeEn functions as well as SampEn and ApEn in this package is based on the 'sampen' function of 'nolds' library: https://github.com/CSchoel/nolds, https://pypi.org/project/nolds/. Hurst exponent extraction of EEG data is also based on a 'nolds' function.
 
-Dependencies: Numpy, Scipy, Matplotlib, os, time, sys, nolds, acoustics (https://pypi.org/project/acoustics/)
+Simulation of fractional Brownian motion (fBm) and fractional Levy motion (fLm) is based on the 'nolds' and 'flm' (https://github.com/cpgr/flm) libraries, respectively. Simulation of colour noise types is based on the 'acoustics' library (https://pypi.org/project/acoustics/).
+
+Dependencies: Numpy, Scipy, Matplotlib, os, time, sys, nolds, flm, acoustics
