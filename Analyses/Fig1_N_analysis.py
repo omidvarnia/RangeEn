@@ -1,13 +1,17 @@
 # Single-scale analysis of ApEn, SampEn, RangeEn_A and RangeEn_B at different signal lengths N
 #
-# This script generates Fig. 1 of the RangeEn manuscript.
+# This script generates Fig. 1 of the below manuscript:
 #
-# Ref: A. Omidvarnia, M. Mesbah, M. Pedersen, G. Jackson, Range Entropy: a bridge between signal complexity and self-similarity, arxiv, 2018
+# A. Omidvarnia, M. Mesbah, M. Pedersen, G. Jackson, Range Entropy: a bridge between signal complexity and self-similarity, Entropy, 2018
+#
+# Change the input 'sig_type' for generating Fig 1-A, B and C.
+# If the flag 'force' is 1, the code is executed from scratch and may take some time to be finished.
+# If the flag 'force' is 0, the code loads pre-saved results in the 'Results' folder.
 #
 # Written by: Amir Omidvarnia, PhD
 # Florey Institute of Neuroscience and Mental Health
 # University of Melbourne, Australia
-# September 2018
+# December 2018
 #
 # Email: a.omidvarnia@brain.org.au
 #
@@ -16,9 +20,8 @@ from os.path import dirname, abspath
 import sys
 import numpy as np
 import os, time
-import sim_data
+from Analyses import sim_data, measures
 import matplotlib.pyplot as plt
-import measures
 
 ############## Set path
 main_folder = dirname(dirname(abspath(__file__))) # /Main RangeEn folder
@@ -39,6 +42,7 @@ N_span   = np.reshape(N_span, (1, len(N_span)))
 
 # Available types of simulated dignals: 'white_noise', 'pink_noise', 'brown_noise'
 sig_type = 'pink_noise'
+STD_correction = 'yes' # Correction of the signal amplitude for ApEn and SampEn through dividing the input signal by its STD: 'yes' or 'no'
 
 ############## Define the results filename
 cwd = os.getcwd() # Current working directory
@@ -70,7 +74,7 @@ if (not os.path.isfile(output_filename) or force):
             elif (sig_type == 'pink_noise'):
                 x = sim_data.Pink_noise(N_span[0, n_N])
             elif (sig_type == 'brown_noise'):
-                x = sim_data.fBm(int(N_span[0, n_N]),0.5)
+                x = sim_data.fBm(int(N_span[0, n_N]), 0.5)
 
             # Approximate Entropy
             ApEn_N[n_surr, n_N]      = measures.ApEn(x, m_single, r_single)

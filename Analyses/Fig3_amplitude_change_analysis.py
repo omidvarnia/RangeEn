@@ -1,13 +1,16 @@
-# Single-scale analysis of ApEn, SampEn, RangeEn_A and RangeEn_B at two signal amplitudes (x(t) and 5x(t))
+# Single-scale analysis of ApEn, SampEn, RangeEn_A and RangeEn_B at three signal amplitudes (x_1(t), x_2(t) and x_3(t) )
 #
-# This script generates Fig. 3 of the RangeEn manuscript.
+# This script generates Fig. 3 of the below manuscript:
 #
-# Ref: A. Omidvarnia, M. Mesbah, M. Pedersen, G. Jackson, Range Entropy: a bridge between signal complexity and self-similarity, arxiv, 2018
+# A. Omidvarnia, M. Mesbah, M. Pedersen, G. Jackson, Range Entropy: a bridge between signal complexity and self-similarity, Entropy, 2018
+#
+# If the flag 'force' is 1, the code is executed from scratch and may take some time to be finished.
+# If the flag 'force' is 0, the code loads pre-saved results in the 'Results' folder.
 #
 # Written by: Amir Omidvarnia, PhD
 # Florey Institute of Neuroscience and Mental Health
 # University of Melbourne, Australia
-# September 2018
+# December 2018
 #
 # Email: a.omidvarnia@brain.org.au
 #
@@ -16,9 +19,8 @@ from os.path import dirname, abspath
 import sys
 import numpy as np
 import os, time
-import sim_data
+from Analyses import sim_data, measures
 import matplotlib.pyplot as plt
-import measures
 
 ############## Set path
 main_folder = dirname(dirname(abspath(__file__))) # /Main RangeEn folder
@@ -69,6 +71,8 @@ if (not os.path.isfile(output_filename) or force):
         x1, y = sim_data.Henon_map(N_single)
     elif (sig_type == 'roessler_osc'):
         x1, y, z = sim_data.Roessler_osc(N_single, t1=0, t2=50)
+    elif (sig_type == 'chirp'):
+        x1 = sim_data.chirp(N_single)
 
     x2 = 5 * x1
 
@@ -87,17 +91,17 @@ if (not os.path.isfile(output_filename) or force):
         t0 = time.time()
 
         # Approximate Entropy
-        ApEn_r[0,n_r]       = measures.ApEn(x1, m_single, r_span[0,n_r])
+        ApEn_r[0,n_r]       = measures.ApEn(x1, m_single, r_span[0, n_r])
         ApEn_r[1,n_r]       = measures.ApEn(x2, m_single, r_span[0, n_r])
-        ApEn_r[2, n_r]      = measures.ApEn(x3/np.std(x3), m_single, r_span[0, n_r])
+        ApEn_r[2, n_r]      = measures.ApEn(x3 / np.std(x3), m_single, r_span[0, n_r])
 
         # Sample Entropy
         SampEn_r[0, n_r]    = measures.SampEn(x1, m_single, r_span[0, n_r])
         SampEn_r[1, n_r]    = measures.SampEn(x2, m_single, r_span[0, n_r])
-        SampEn_r[2, n_r]    = measures.SampEn(x3/np.std(x3), m_single, r_span[0, n_r])
+        SampEn_r[2, n_r]    = measures.SampEn(x3 / np.std(x3), m_single, r_span[0, n_r])
 
         # RangeEn-A (Modified Approximate Entropy)
-        RangeEn_A_r[0, n_r] = measures.RangeEn_A(x1, m_single, r_span[0,n_r])
+        RangeEn_A_r[0, n_r] = measures.RangeEn_A(x1, m_single, r_span[0, n_r])
         RangeEn_A_r[1, n_r] = measures.RangeEn_A(x2, m_single, r_span[0, n_r])
         RangeEn_A_r[2, n_r] = measures.RangeEn_A(x3, m_single, r_span[0, n_r])
 

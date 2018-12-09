@@ -1,13 +1,17 @@
 # Single-scale analysis of ApEn, SampEn, RangeEn_A and RangeEn_B at different tolerance values r
 #
-# This script generates Fig. 2 and Fig. 5 of the RangeEn manuscript.
+# This script generates Fig. 2 of the below manuscript:
 #
-# Ref: A. Omidvarnia, M. Mesbah, M. Pedersen, G. Jackson, Range Entropy: a bridge between signal complexity and self-similarity, arxiv, 2018
+# A. Omidvarnia, M. Mesbah, M. Pedersen, G. Jackson, Range Entropy: a bridge between signal complexity and self-similarity, Entropy, 2018
+#
+# Change the input 'sig_type' for generating Fig 2-A, B and C.
+# If the flag 'force' is 1, the code is executed from scratch and may take some time to be finished.
+# If the flag 'force' is 0, the code loads pre-saved results in the 'Results' folder.
 #
 # Written by: Amir Omidvarnia, PhD
 # Florey Institute of Neuroscience and Mental Health
 # University of Melbourne, Australia
-# September 2018
+# December 2018
 #
 # Email: a.omidvarnia@brain.org.au
 #
@@ -16,9 +20,8 @@ from os.path import dirname, abspath
 import sys
 import numpy as np
 import os, time
-import sim_data
+from Analyses import sim_data, measures
 import matplotlib.pyplot as plt
-import measures
 
 ############## Set path
 main_folder = dirname(dirname(abspath(__file__))) # /Main RangeEn folder
@@ -88,9 +91,9 @@ if (not os.path.isfile(output_filename) or force):
             elif (sig_type == 'pink_noise'):
                 x = sim_data.Pink_noise(N_single)
             elif (sig_type == 'brown_noise'):
-                x = sim_data.fBm(int(N_single),0.5)
+                x = sim_data.fBm(int(N_single), 0.5)
             elif (sig_type == 'fBm025'):
-                x = sim_data.fBm(int(N_single),0.25)
+                x = sim_data.fBm(int(N_single), 0.25)
             elif (sig_type == 'MIX'):
                 x = sim_data.MIX(int(N_single), 0, 50)
             elif (sig_type == 'logistic_map'):
@@ -98,16 +101,16 @@ if (not os.path.isfile(output_filename) or force):
             elif (sig_type == 'henon_map'):
                 x, y = sim_data.Henon_map(N_single)
             elif (sig_type == 'roessler_osc'):
-                x, y, z = sim_data.Roessler_osc(N_single,t1=0, t2=50)
+                x, y, z = sim_data.Roessler_osc(N_single, t1=0, t2=50)
 
             # Approximate Entropy
             ApEn_r[n_surr, n_r]      = measures.ApEn(x, m_single, r_span[0, n_r])
 
             # Sample Entropy
-            SampEn_r[n_surr, n_r]    = measures.SampEn(x, m_single, r_span[0,n_r])
+            SampEn_r[n_surr, n_r]    = measures.SampEn(x, m_single, r_span[0, n_r])
 
             # RangeEn-A (Modified Approximate Entropy)
-            RangeEn_A_r[n_surr, n_r] = measures.RangeEn_A(x, m_single, r_span[0,n_r])
+            RangeEn_A_r[n_surr, n_r] = measures.RangeEn_A(x, m_single, r_span[0, n_r])
 
             # RangeEn-B (Modified Sample Entropy)
             RangeEn_B_r[n_surr, n_r] = measures.RangeEn_B(x, m_single, r_span[0, n_r])

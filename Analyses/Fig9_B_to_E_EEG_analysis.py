@@ -1,8 +1,12 @@
-# EEG analysis of ApEn, SampEn, RangeEn_A and RangeEn_B at different tolerance values r
+# Entropy analysis of epileptic EEG datasets over the range of r values (0 to 1)
 #
-# This script generates Fig. 6 of the RangeEn manuscript.
+# This script generates Fig. 9-B to E of the below manuscript:
 #
-# Ref: A. Omidvarnia, M. Mesbah, M. Pedersen, G. Jackson, Range Entropy: a bridge between signal complexity and self-similarity, arxiv, 2018
+# If the flag 'force' is 1, the code is executed from scratch and may take some time to be finished.
+# If the flag 'force' is 0, the code loads pre-saved results in the 'Results' folder.
+# Change 'EEG_database_label' to choose between different EEG datasets.
+#
+# A. Omidvarnia, M. Mesbah, M. Pedersen, G. Jackson, Range Entropy: a bridge between signal complexity and self-similarity, Entropy, 2018
 #
 # EEG dataset is available at: http://epileptologie-bonn.de/cms/front_content.php?idcat=193&lang=3&changelang=3
 # Ref: Andrzejak RG, Lehnertz K, Rieke C, Mormann F, David P, Elger CE (2001) Indications of nonlinear deterministic and finite dimensional
@@ -21,7 +25,6 @@ import sys
 import numpy as np
 import os, time
 import matplotlib.pyplot as plt
-import measures
 
 ############## Set path
 main_folder = dirname(dirname(abspath(__file__))) # /Main RangeEn folder
@@ -29,9 +32,11 @@ sys.path.insert(0, main_folder)
 
 EEG_folder = main_folder + os.sep + 'EEG_data' + os.sep + 'datasets'
 
+from Analyses import measures
+
 ############## Set parameters
 is_plot  = 1      # Plotting flag (if 1, the final result will be plotted).
-force    = 0      # BE CAREFULL! If 1, the analysis will be done, even if there is an existing result file.
+force    = 0     # BE CAREFULL! If 1, the analysis will be done, even if there is an existing result file.
 
 N_seg   = 100    # Number of EEG segments in each dataset
 m_single = 2      # Embeding dimension
@@ -42,7 +47,7 @@ r_span   = np.reshape(r_span, (1, len(r_span)))
 # This is a flag for parallel processing (suitable for multi-core computers or high performance computing units (HPCUs).
 # Note that both processing pipelines will generate the same results, but parallet processing is much faster.
 processing_type = 'parallel' # 'parallel' or 'non-parallel'
-n_processor     = 16
+n_processor     = 32
 
 # EEG dataset labels in Andrzejak et al, 2001:
 # label 'Z' associated with dataset 'A': scalp EEG of 5 healthy subjects with eyes open
@@ -55,13 +60,18 @@ if(EEG_database_label=='N'): # Aparently, numpy.loadtxt is case sensitive and do
     file_ext = '.TXT'
 else:
     file_ext = '.txt'
+STD_correction = 'yes' # Correction of the signal amplitude for ApEn and SampEn through dividing the input signal by its STD: 'yes' or 'no'
 
 ############## Define the results filename
 cwd = os.getcwd()  # Current working directory
 if(not os.path.exists(cwd + os.sep + 'Results')):
     # Create the Results folder, if needed.
     os.mkdir(cwd + os.sep + 'Results')
-output_filename = cwd + os.sep + 'Results' + os.sep + 'Fig8_EEG_dataset_' + EEG_database_label + '_' + processing_type + '.npz'
+
+if(STD_correction=='yes'):
+    output_filename = cwd + os.sep + 'Results' + os.sep + 'Fig8_EEG_dataset_' + EEG_database_label + '_' + processing_type + '_STDcorrection.npz'
+else:
+    output_filename = cwd + os.sep + 'Results' + os.sep + 'Fig8_EEG_dataset_' + EEG_database_label + '_' + processing_type + '.npz'
 
 ################ FOR PARALLEL PROCESSING: Analysis function for extracting entropy measures from a typical EEG segment
 def Entropy_analysis(parallel_inputs):
@@ -73,10 +83,10 @@ def Entropy_analysis(parallel_inputs):
     emb_dim  = parallel_inputs['emb_dim']    # Embedding dimension
 
     ### Perform entropy analysis
-    ApEn = measures.ApEn(x/np.std(x), emb_dim, r)
+    ApEn = measures.ApEn(x, emb_dim, r)
 
     # Sample Entropy
-    SampEn = measures.SampEn(x/np.std(x), emb_dim, r)
+    SampEn = measures.SampEn(x, emb_dim, r)
 
     # RangeEn-A (Modified Approximate Entropy)
     RangeEn_A = measures.RangeEn_A(x, emb_dim, r)
@@ -158,6 +168,11 @@ def entropy_measure_conditioning(ApEn_r, SampEn_r, RangeEn_A_r, RangeEn_B_r, N_r
 
     return out1, out2, out3, out4
 
+if (processing_type == 'parallel'):
+    ### Import the multiprocessing library, if needed.
+    import multiprocessing
+    pool = multiprocessing.Pool(processes=n_processor)
+
 ############### Main script
 if(__name__=='__main__'): # If this is the main script (and not a called function within the main script)
     # Perform entropy analysis over the span of r values: See also Fig.1-B of Richman and Moorman 2000
@@ -175,12 +190,6 @@ if(__name__=='__main__'): # If this is the main script (and not a called functio
 
             t00 = time.time()
 
-            ### Import the multiprocessing library, if needed.
-            if (processing_type == 'parallel'):
-                import multiprocessing
-
-                pool = multiprocessing.Pool(processes=n_processor)
-
             ### Run entropy analysis
             for n_r in range(0, N_r):
 
@@ -194,6 +203,9 @@ if(__name__=='__main__'): # If this is the main script (and not a called functio
                     # Load the EEG segment
                     segment_filename = os.path.join(EEG_folder + os.sep + EEG_database_label, EEG_database_label + str("%03d" % (n_seg + 1)) + file_ext)
                     x = np.loadtxt(segment_filename)
+
+                    if (STD_correction == 'yes'):
+                        x = x/np.std(x)
 
                     EEG_inputs = {"x": x, "emb_dim": m_single, 'r': r_span[0, n_r]}
 
@@ -229,15 +241,17 @@ if(__name__=='__main__'): # If this is the main script (and not a called functio
                         # Load the EEG segment
                         segment_filename = os.path.join(EEG_folder + os.sep + EEG_database_label, EEG_database_label + str("%03d" %(n_seg+1)) + file_ext)
                         x                = np.loadtxt(segment_filename)
+                        if (STD_correction == 'yes'):
+                            x = x/np.std(x)
 
                         # Approximate Entropy
-                        ApEn_r[n_seg, n_r]      = measures.ApEn(x/np.std(x), m_single, r_span[0, n_r])
+                        ApEn_r[n_seg, n_r]      = measures.ApEn(x, m_single, r_span[0, n_r])
 
                         # Sample Entropy
-                        SampEn_r[n_seg, n_r]    = measures.SampEn(x/np.std(x), m_single, r_span[0,n_r])
+                        SampEn_r[n_seg, n_r]    = measures.SampEn(x, m_single, r_span[0, n_r])
 
                         # RangeEn-A (Modified Approximate Entropy)
-                        RangeEn_A_r[n_seg, n_r] = measures.RangeEn_A(x, m_single, r_span[0,n_r])
+                        RangeEn_A_r[n_seg, n_r] = measures.RangeEn_A(x, m_single, r_span[0, n_r])
 
                         # RangeEn-B (Modified Sample Entropy)
                         RangeEn_B_r[n_seg, n_r] = measures.RangeEn_B(x, m_single, r_span[0, n_r])
@@ -287,133 +301,24 @@ if(__name__=='__main__'): # If this is the main script (and not a called functio
                       'N: iEEG, interictal, contra',
                       'F: iEEG, interictal, ipsi',
                       'S: iEEG, ictal']
-        ######################## Version 1: Separate epileptic and normal EEG figures
-        plt.figure()
-        #### Fig 6-A: RangeEn-A and epileptic EEG
-        for n_dataset in range(2,5):
-            ##### Load the existing output .npz file
-            output_filename = cwd + os.sep + 'Results' + os.sep + 'Fig8_EEG_dataset_' + dataset_labels[n_dataset] + '_' + processing_type + '.npz'
-            out = np.load(output_filename)
-            ApEn_r = out['ApEn_r']
-            SampEn_r = out['SampEn_r']
-            RangeEn_A_r = out['RangeEn_A_r']
-            RangeEn_B_r = out['RangeEn_B_r']
 
-            ## Entropy measure trimming
-            out1, out2, out3, out4 = entropy_measure_conditioning(ApEn_r, SampEn_r, RangeEn_A_r, RangeEn_B_r, N_r)
+        dataset_labels = ['N', 'F', 'S']
+        legend_txt = ['N: iEEG, interictal, contra',
+                      'F: iEEG, interictal, ipsi',
+                      'S: iEEG, ictal']
 
-            RangeEn_A_r2_m = out3['1']
-            RangeEn_A_r2_std = out3['2']
-            def_ind3 = out3['3']
-
-            plt.plot()
-            ax = plt.subplot(221)
-            ax.set_xscale("log", nonposx='clip')
-            plt.xlim([0.01, 1])
-            plt.ylim([0,1.8])
-            plt.errorbar(np.array(r_span[0, def_ind3]), RangeEn_A_r2_m, yerr=RangeEn_A_r2_std, fmt='-^', markersize=8)
-
-        plt.title('RangeEn_A - epileptic EEG')
-        plt.xlabel('r')
-        plt.legend(legend_txt)
-
-        #### Fig 6-B: RangeEn-B and epileptic EEG
-        for n_dataset in range(2, 5):
-            ##### Load the existing output .npz file
-            output_filename = cwd + os.sep + 'Results' + os.sep + 'Fig8_EEG_dataset_' + dataset_labels[n_dataset] + '_' + processing_type + '.npz'
-            out = np.load(output_filename)
-            ApEn_r = out['ApEn_r']
-            SampEn_r = out['SampEn_r']
-            RangeEn_A_r = out['RangeEn_A_r']
-            RangeEn_B_r = out['RangeEn_B_r']
-
-            ## Entropy measure trimming
-            out1, out2, out3, out4 = entropy_measure_conditioning(ApEn_r, SampEn_r, RangeEn_A_r, RangeEn_B_r, N_r)
-
-            RangeEn_B_r2_m = out4['1']
-            RangeEn_B_r2_std = out4['2']
-            def_ind4 = out4['3']
-
-            plt.plot()
-            ax = plt.subplot(222)
-            ax.set_xscale("log", nonposx='clip')
-            plt.xlim([0.01,1])
-            plt.ylim([0, 3.5])
-            plt.errorbar(np.array(r_span[0, def_ind4]), RangeEn_B_r2_m, yerr=RangeEn_B_r2_std, fmt='-^', markersize=8)
-
-            plt.title('RangeEn_B - epileptic EEG')
-            plt.xlabel('r')
-            plt.legend(legend_txt)
-
-        #### Fig 6-C: RangeEn-A and normal EEG
-        for n_dataset in range(0, 2):
-            ##### Load the existing output .npz file
-            output_filename = cwd + os.sep + 'Results' + os.sep + 'Fig8_EEG_dataset_' + dataset_labels[
-                n_dataset] + '_' + processing_type + '.npz'
-            out = np.load(output_filename)
-            ApEn_r = out['ApEn_r']
-            SampEn_r = out['SampEn_r']
-            RangeEn_A_r = out['RangeEn_A_r']
-            RangeEn_B_r = out['RangeEn_B_r']
-
-            ## Entropy measure trimming
-            out1, out2, out3, out4 = entropy_measure_conditioning(ApEn_r, SampEn_r, RangeEn_A_r, RangeEn_B_r, N_r)
-
-            RangeEn_A_r2_m = out3['1']
-            RangeEn_A_r2_std = out3['2']
-            def_ind3 = out3['3']
-
-            plt.plot()
-            ax = plt.subplot(223)
-            ax.set_xscale("log", nonposx='clip')
-            plt.xlim([0.01, 1])
-            plt.ylim([0, 1.8])
-            plt.errorbar(np.array(r_span[0, def_ind3]), RangeEn_A_r2_m, yerr=RangeEn_A_r2_std, fmt='-^',
-                         markersize=8)
-
-        plt.title('RangeEn_A - normal EEG')
-        plt.xlabel('r')
-        plt.legend(legend_txt)
-
-        #### Fig 6-D: RangeEn-B and normal EEG
-        for n_dataset in range(0, 2):
-            ##### Load the existing output .npz file
-            output_filename = cwd + os.sep + 'Results' + os.sep + 'Fig8_EEG_dataset_' + dataset_labels[
-                n_dataset] + '_' + processing_type + '.npz'
-            out = np.load(output_filename)
-            ApEn_r = out['ApEn_r']
-            SampEn_r = out['SampEn_r']
-            RangeEn_A_r = out['RangeEn_A_r']
-            RangeEn_B_r = out['RangeEn_B_r']
-
-            ## Entropy measure trimming
-            out1, out2, out3, out4 = entropy_measure_conditioning(ApEn_r, SampEn_r, RangeEn_A_r, RangeEn_B_r, N_r)
-
-            RangeEn_B_r2_m = out4['1']
-            RangeEn_B_r2_std = out4['2']
-            def_ind4 = out4['3']
-
-            plt.plot()
-            ax = plt.subplot(224)
-            ax.set_xscale("log", nonposx='clip')
-            plt.xlim([0.01, 1])
-            plt.ylim([0, 3.5])
-            plt.errorbar(np.array(r_span[0, def_ind4]), RangeEn_B_r2_m, yerr=RangeEn_B_r2_std, fmt='-^',
-                         markersize=8)
-
-        plt.title('RangeEn_B - normal EEG')
-        plt.xlabel('r')
-        plt.legend(legend_txt)
-
-        plt.draw()
+        N_dataset = len(dataset_labels)
 
         ######################## Version 2: Combined epileptic and normal EEG figures
         plt.figure()
-        #### Fig 6-A: RangeEn-A
-        for n_dataset in range(0, 5):
+        #### Fig 6-A: ApEn
+        for n_dataset in range(0, N_dataset):
             ##### Load the existing output .npz file
-            output_filename = cwd + os.sep + 'Results' + os.sep + 'Fig8_EEG_dataset_' + dataset_labels[
-                n_dataset] + '_' + processing_type + '.npz'
+            if (STD_correction == 'yes'):
+                output_filename = cwd + os.sep + 'Results' + os.sep + 'Fig8_EEG_dataset_' + dataset_labels[n_dataset] + '_' + processing_type + '_STDcorrection.npz'
+            else:
+                output_filename = cwd + os.sep + 'Results' + os.sep + 'Fig8_EEG_dataset_' + dataset_labels[n_dataset] + '_' + processing_type + '.npz'
+
             out = np.load(output_filename)
             ApEn_r = out['ApEn_r']
             SampEn_r = out['SampEn_r']
@@ -422,51 +327,125 @@ if(__name__=='__main__'): # If this is the main script (and not a called functio
 
             ## Entropy measure trimming
             out1, out2, out3, out4 = entropy_measure_conditioning(ApEn_r, SampEn_r, RangeEn_A_r, RangeEn_B_r, N_r)
+
+            ApEn_r2_m = out1['1']
+            ApEn_r2_std = out1['2']
+            def_ind1 = out1['3']
+
+            SampEn_r2_m = out2['1']
+            SampEn_r2_std = out2['2']
+            def_ind2 = out2['3']
 
             RangeEn_A_r2_m = out3['1']
             RangeEn_A_r2_std = out3['2']
             def_ind3 = out3['3']
 
-            plt.plot()
-            ax = plt.subplot(211)
-            ax.set_xscale("log", nonposx='clip')
-            plt.xlim([0.01, 1])
-            plt.ylim([0, 1.8])
-            plt.errorbar(np.array(r_span[0, def_ind3]), RangeEn_A_r2_m, yerr=RangeEn_A_r2_std, fmt='-^', markersize=8)
-
-        plt.title('RangeEn_A')
-        plt.xlabel('r')
-        plt.legend(legend_txt)
-
-        #### Fig 6-B: RangeEn-B
-        for n_dataset in range(0, 5):
-            ##### Load the existing output .npz file
-            output_filename = cwd + os.sep + 'Results' + os.sep + 'Fig8_EEG_dataset_' + dataset_labels[
-                n_dataset] + '_' + processing_type + '.npz'
-            out = np.load(output_filename)
-            ApEn_r = out['ApEn_r']
-            SampEn_r = out['SampEn_r']
-            RangeEn_A_r = out['RangeEn_A_r']
-            RangeEn_B_r = out['RangeEn_B_r']
-
-            ## Entropy measure trimming
-            out1, out2, out3, out4 = entropy_measure_conditioning(ApEn_r, SampEn_r, RangeEn_A_r, RangeEn_B_r, N_r)
-
             RangeEn_B_r2_m = out4['1']
             RangeEn_B_r2_std = out4['2']
             def_ind4 = out4['3']
 
-            plt.plot()
-            ax = plt.subplot(212)
+            # ApEn
+            ax = plt.subplot(221)
+            ax.set_xscale("log", nonposx='clip')
+            plt.xlim([0.01, 1])
+            plt.ylim([0, 1.7])
+            plt.errorbar(np.array(r_span[0, def_ind1]), ApEn_r2_m, yerr=ApEn_r2_std, fmt='-^', markersize=2)
+            plt.title('ApEn')
+            plt.xlabel('r')
+            plt.legend(legend_txt)
+
+            # SampEn
+            ax = plt.subplot(222)
             ax.set_xscale("log", nonposx='clip')
             plt.xlim([0.01, 1])
             plt.ylim([0, 3.5])
-            plt.errorbar(np.array(r_span[0, def_ind4]), RangeEn_B_r2_m, yerr=RangeEn_B_r2_std, fmt='-^', markersize=8)
+            plt.errorbar(np.array(r_span[0, def_ind2]), SampEn_r2_m, yerr=SampEn_r2_std, fmt='-^', markersize=2)
+            plt.title('SampEn')
+            plt.xlabel('r')
+            plt.legend(legend_txt)
 
+            # RangeEn A
+            ax = plt.subplot(223)
+            ax.set_xscale("log", nonposx='clip')
+            plt.xlim([0.01, 1])
+            plt.ylim([0, 1.6])
+            plt.errorbar(np.array(r_span[0, def_ind3]), RangeEn_A_r2_m, yerr=RangeEn_A_r2_std, fmt='-^', markersize=2)
+            plt.title('RangeEn_A')
+            plt.xlabel('r')
+            plt.legend(legend_txt)
+
+            # RangeEn B
+            ax = plt.subplot(224)
+            ax.set_xscale("log", nonposx='clip')
+            plt.xlim([0.01, 1])
+            plt.ylim([0, 2.5])
+            plt.errorbar(np.array(r_span[0, def_ind4]), RangeEn_B_r2_m, yerr=RangeEn_B_r2_std, fmt='-^', markersize=2)
             plt.title('RangeEn_B')
             plt.xlabel('r')
             plt.legend(legend_txt)
 
+        plt.suptitle('EEG - STD correction: ' + STD_correction + ', dataset: ' + EEG_database_label)
+
+        ######################## Histograms of all measures
+        # N_bins = 20
+        # plt.figure()
+        # #### Fig 6-A: ApEn
+        # for n_dataset in range(0, N_dataset):
+        #     ##### Load the existing output .npz file
+        #     if (STD_correction == 'yes'):
+        #         output_filename = cwd + os.sep + 'Results' + os.sep + 'Fig8_EEG_dataset_' + dataset_labels[n_dataset] + '_' + processing_type + '_STDcorrection.npz'
+        #     else:
+        #         output_filename = cwd + os.sep + 'Results' + os.sep + 'Fig8_EEG_dataset_' + dataset_labels[n_dataset] + '_' + processing_type + '.npz'
+        #     out = np.load(output_filename)
+        #     ApEn_r = out['ApEn_r']
+        #     SampEn_r = out['SampEn_r']
+        #     RangeEn_A_r = out['RangeEn_A_r']
+        #     RangeEn_B_r = out['RangeEn_B_r']
+        #
+        #     ## Entropy measure trimming
+        #     out1, out2, out3, out4 = entropy_measure_conditioning(ApEn_r, SampEn_r, RangeEn_A_r, RangeEn_B_r, N_r)
+        #
+        #     ApEn_r2_m = out1['1']
+        #     ApEn_r2_std = out1['2']
+        #     def_ind1 = out1['3']
+        #
+        #     SampEn_r2_m = out2['1']
+        #     SampEn_r2_std = out2['2']
+        #     def_ind2 = out2['3']
+        #
+        #     RangeEn_A_r2_m = out3['1']
+        #     RangeEn_A_r2_std = out3['2']
+        #     def_ind3 = out3['3']
+        #
+        #     RangeEn_B_r2_m = out4['1']
+        #     RangeEn_B_r2_std = out4['2']
+        #     def_ind4 = out4['3']
+        #
+        #     ax = plt.subplot(221)
+        #     plt.hist(ApEn_r[15, def_ind1], bins=N_bins, range=(0, 1), alpha=.6)
+        #     plt.title('ApEn')
+        #     plt.xlabel('r')
+        #     plt.legend(legend_txt)
+        #
+        #     ax = plt.subplot(222)
+        #     plt.hist(SampEn_r[8, def_ind2], bins=N_bins, range=(0, 1), alpha=.6)
+        #     plt.title('SampEn')
+        #     plt.xlabel('r')
+        #     plt.legend(legend_txt)
+        #
+        #     ax = plt.subplot(223)
+        #     plt.hist(RangeEn_A_r[20, def_ind3], bins=N_bins, range=(0, 1), alpha=.6)
+        #     plt.title('RangeEn_A')
+        #     plt.xlabel('r')
+        #     plt.legend(legend_txt)
+        #
+        #     ax = plt.subplot(224)
+        #     plt.hist(RangeEn_B_r[20, def_ind4], bins=N_bins, range=(0, 1), alpha=.6)
+        #     plt.title('RangeEn_B')
+        #     plt.xlabel('r')
+        #     plt.legend(legend_txt)
+        #
+        # plt.suptitle('EEG - STD correction: ' + STD_correction + ', dataset: ' + EEG_database_label)
         plt.show()
 
     print('Finished!')

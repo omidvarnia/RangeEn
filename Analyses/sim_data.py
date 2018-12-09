@@ -11,12 +11,13 @@
 #
 ############## Import necessary libraries and set initial parameters
 import numpy as np
-from fbm import FBM
+from Analyses.flm import flm
 import nolds
 import acoustics.generator as gen
 from scipy.integrate import odeint
+from scipy.signal import chirp
 
-### Fractal Brownian motion
+### Fractional Brownian motion
 # Ref: https://pypi.org/project/fbm/0.1.1/
 def fBm(N, H):
     # f = FBM(n=N - 1, hurst=H, length=1, method='hosking')
@@ -25,7 +26,45 @@ def fBm(N, H):
     x = nolds.fbm(N,H)
     return x
 
-### What noise
+### Fractional Brownian motion with an extra multiplier D (as per the reviewer's question).
+# This implementation is based on the implementation of nolds.fbm at: https://cschoel.github.io/nolds/_modules/nolds/datasets.html#fbm
+def fBm_D(N, H, D):
+    # f = FBM(n=N - 1, hurst=H, length=1, method='hosking')
+    # x = f.fbm()
+
+    assert H > 0 and H < 1 # If this condition is not met, it generates an error message.
+
+    def R(t, s):
+        twoH = 2 * H
+        return D * 0.5 * (s ** twoH + t ** twoH - np.abs(t - s) ** twoH)
+
+    # form the matrix tau
+    gamma = R(*np.mgrid[0:N, 0:N])  # apply R to every element in matrix
+    w, P = np.linalg.eigh(gamma)
+    L = np.diag(w)
+    sigma = np.dot(np.dot(P, np.sqrt(L)), np.linalg.inv(P))
+    v = np.random.randn(N)
+
+    x = np.dot(sigma, v)
+    return x
+
+### Fractional Levy motion
+def fLm(alpha, H, n, dim=1, nm=10):
+    # Algorithm to generate fractional Levy motion
+    #
+    # From Lui et al, A corrected and generalized successive random additions
+    # algorithm for simulating Fractional Levy Motion, Mathematical Geology, 36 (2004)
+    #
+    # Chris Green, 2018
+    # chris.green@csiro.au
+    #
+    # Ref: https://github.com/cpgr/flm
+
+    x = flm(alpha, H, n, dim, nm)
+
+    return x
+
+### White noise
 # Ref: https://pypi.org/project/acoustics/
 def white_noise(N):
     x = gen.white(N)
@@ -52,6 +91,24 @@ def Sine_wave(N,t1=0,t2=4*np.pi):
     tspan = np.arange(t1, t2, (t2-t1) / N)
     x = np.sin(tspan)
     return x, tspan
+
+### Line
+def Line(N):
+    x = np.arange(N)
+    return x
+
+### Chirp (LFM) signal
+def chirp(N,f0=6,f1=1,t1=10,t_end=10):
+    # f0: Frequency at time 0
+    # t1: Time at which f1 is specified.
+    # f1: Frequency (e.g. Hz) of the waveform at time t1.
+    # t: Times at which to evaluate the waveform.
+    # t_end: Signal length in seconds
+    # N: Number of samples
+
+    t = np.linspace(0, t_end, N)
+    x = chirp(t, f0, f1, t1, method='linear')
+    return x
 
 ### The Logistic map
 def Logistic_map(N, R=3.8, x0=0.4):
