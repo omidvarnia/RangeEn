@@ -99,23 +99,23 @@ end
 
 disp(['***** The analysis was finished, elapsed time: ' num2str(toc(t0))])
 
-%% Plot
+%% Plot --> Colorbar is associated with the Hurst exponents
 figure;
 subplot(2,2,1); h = plot(r_span, cell2mat(ApEn_h)); axis tight
 set(h, {'color'}, num2cell(jet(length(H_span)), 2));
-xlabel('Hurst exponent'), ylabel('ApEn')
+xlabel('Tolerance r'), ylabel('ApEn')
 
 subplot(2,2,2); h = plot(r_span, cell2mat(SampEn_h)); axis tight
 set(h, {'color'}, num2cell(jet(length(H_span)), 2));
-xlabel('Hurst exponent'), ylabel('SampEn'), colormap jet, colorbar
+xlabel('Tolerance r'), ylabel('SampEn'), colormap jet, colorbar
 
 subplot(2,2,3); h = plot(r_span, cell2mat(RangeEn_A_h)); axis tight
 set(h, {'color'}, num2cell(jet(length(H_span)), 2));
-xlabel('Hurst exponent'), ylabel('RangeEn-A')
+xlabel('Tolerance r'), ylabel('RangeEn-A')
 
 subplot(2,2,4); h = plot(r_span, cell2mat(RangeEn_B_h)); axis tight
 set(h, {'color'}, num2cell(jet(length(H_span)), 2));
-xlabel('Hurst exponent'), ylabel('RangeEn-B'), colormap jet, colorbar
+xlabel('Tolerance r'), ylabel('RangeEn-B'), colormap jet, colorbar
 
 
 
